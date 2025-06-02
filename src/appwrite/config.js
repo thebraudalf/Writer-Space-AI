@@ -87,6 +87,7 @@ export class Service {
         conf.appwriteCollectionId,
         queries
       );
+     
     } catch (error) {
       console.log("Appwrite Service :: getPosts :: error", error);
       return false;
@@ -119,12 +120,11 @@ export class Service {
   }
 
   // file preview service
-  async getfilePreview(fileId) {
+  getfilePreview(fileId) {
     try {
-      return this.bucket.getFilePreview(conf.appwriteBucketId, fileId);
+      return this.bucket.getFileView(conf.appwriteBucketId, fileId);
     } catch (error) {
       console.log("Appwrite Service :: getfilePreview :: error", error);
-      throw error;
     }
   }
 }
