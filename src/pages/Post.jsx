@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import appwriteService from "../appwrite/config.js";
 import { Button, Container } from "../components/index.js";
 import parse from "html-react-parser";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchSlugPost,
+  deletePost as deleteSlugPost,
+  clearSlugPost,
+} from "../store/postSlice.js";
+import { deleteFile, getFeaturedImage } from "../store/storageSlice.js";
 
 export default function Post() {
   const [post, setPost] = useState(null);
@@ -11,35 +16,50 @@ export default function Post() {
   const navigate = useNavigate();
 
   const userData = useSelector((state) => state.auth.userData);
+  const { slugPost } = useSelector((state) => state.post);
+  const urlToPreview = useSelector((state) =>
+    post ? state.storage.filesToPreview[post.featuredImage] : null
+  );
+
+  const dispatch = useDispatch();
 
   const isAuthor = post && userData ? post.userId === userData.$id : false;
 
   useEffect(() => {
     if (slug) {
-      appwriteService.getPost(slug).then((post) => {
-        if (post) setPost(post);
-        else navigate("/");
-      });
+      dispatch(fetchSlugPost(slug));
     } else navigate("/");
-  }, [slug, navigate]);
+
+    // Cleanup function: Clear slugPost when component unmounts or slug changes
+    return () => {
+      dispatch(clearSlugPost());
+    };
+  }, [slug, navigate, dispatch]);
+
+  useEffect(() => {
+    if (slugPost) {
+      setPost(slugPost);
+    }
+  }, [slugPost]);
+
+  useEffect(() => {
+    if (post && post.featuredImage && !urlToPreview) {
+      dispatch(getFeaturedImage(post.featuredImage));
+    }
+  }, [dispatch, post, urlToPreview]);
 
   const deletePost = () => {
-    appwriteService.deletePost(post.$id).then((status) => {
-      if (status) {
-        appwriteService.deleteFile(post.featuredImage);
-        navigate("/");
-      }
-    });
+    dispatch(deleteSlugPost(slug));
+    if (post) {
+      dispatch(deleteFile(post.featuredImage));
+      navigate("/");
+    }
   };
 
   return post ? (
     <div className="py-8">
       <div className="w-full flex justify-center mb-4 relative border rounded-xl p-2">
-        <img
-          src={appwriteService.getfilePreview(post.featuredImage)}
-          alt={post.title}
-          className="rounded-xl"
-        />
+        <img src={urlToPreview} alt={post.title} className="rounded-xl" />
 
         {isAuthor && (
           <div className="absolute right-6 top-6">
@@ -48,7 +68,11 @@ export default function Post() {
                 Edit
               </Button>
             </Link>
-            <Button bgColor="bg-red-500" onClick={deletePost} childern={"Delete"}>
+            <Button
+              bgColor="bg-red-500"
+              onClick={deletePost}
+              childern={"Delete"}
+            >
               Delete
             </Button>
           </div>

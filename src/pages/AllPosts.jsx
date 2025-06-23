@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from "react";
-import appwriteService from "../appwrite/config.js";
 import { Container, PostCard } from "../components/index.js";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAllPosts } from "../store/postSlice.js";
 
 function AllPosts() {
-  const [posts, setPosts] = useState([]);
+  const { activePosts } = useSelector((state) => state.post)
+  const dispatch = useDispatch()
 
   useEffect(() => {
-    appwriteService.getPosts().then((posts) => {
-      if (posts) {
-        setPosts(posts.documents);
-      }
-    });
-  }, []);
+    dispatch(fetchAllPosts())
+  }, [dispatch]);
 
   return (
     <div className="w-full py-8">
       <Container
         Childern={
           <div className="flex flex-wrap">
-            {posts.map((post) => (
+            {activePosts.map((post) => (
               <div key={post.$id} className="p-2 w-1/4">
                 <PostCard {...post} />
               </div>

@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from "react";
-import appwriteService from "../appwrite/config.js";
 import { Container, PostCard } from "../components/index.js";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAllPosts } from "../store/postSlice.js";
 
 function Home() {
-  const [posts, setPosts] = useState([]);
-  useEffect(() => {
-    appwriteService.getPosts().then((posts) => {
-      if (posts) {
-        setPosts(posts.documents);
-      }
-    });
-  }, []);
+  const { activePosts, loading, error } = useSelector((state) => state.post);
+  const [post, setPost] = useState([]);
+  const dispatch = useDispatch();
 
-  if (posts.length === 0) {
+  useEffect(() => {
+    dispatch(fetchAllPosts());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (activePosts) {
+      setPost(activePosts);
+    }
+  }, [activePosts]);
+
+  if (post.length === 0) {
     return (
       <div className="w-full py-8 mt-4 text-center">
         <div className="flex flex-wrap">
@@ -28,7 +34,7 @@ function Home() {
   return (
     <div className="w-full py-8">
       <div className="flex flex-wrap">
-        {posts.map((post) => (
+        {post.map((post) => (
           <div key={post.$id} className="p-2 w-1/4">
             <PostCard {...post} />
           </div>
