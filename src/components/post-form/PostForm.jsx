@@ -3,10 +3,17 @@ import { useForm } from "react-hook-form";
 import { Button, Input, Select, RTE } from "../index.js";
 import appwriteService from "../../appwrite/config.js";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  createPost,
+  setCreatePostData,
+  setUpdatePostData,
+  updatePost,
+} from "../../store/postEditorSlice.js";
+import { uploadFeaturedImage } from "../../store/storageSlice.js";
 
 function PostForm({ post }) {
-  const { register, handleSubmit, watch, setValue, control, getValues } =
+  const { register, handleSubmit, watch, setValue, control, getValues, reset } =
     useForm({
       defaultValues: {
         title: post?.title || "",
@@ -17,9 +24,67 @@ function PostForm({ post }) {
     });
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const userData = useSelector((state) => state.auth.userData);
+  const { createPostData, updatePostData, error } = useSelector(
+    (state) => state.postEditor
+  );
 
+  useEffect(() => {
+    if (createPostData) {
+      navigate(`/post/${createPostData.$id}`);
+      dispatch(setCreatePostData(null)); // clear old state
+    }
+  }, [createPostData, navigate, dispatch]);
+
+  useEffect(() => {
+    if (updatePostData) {
+      navigate(`/post/${updatePostData.$id}`);
+      dispatch(setUpdatePostData(null)); // clear old state
+    }
+  }, [updatePostData, navigate, dispatch]);
+
+  // new submit function
   const submit = async (data) => {
+    try {
+      if (post) {
+        let file = null;
+        if (data.image[0]) {
+          // Dispatch the uploadFeaturedImage thunk and unwrap the result
+          const uploadResult = await dispatch(
+            uploadFeaturedImage(data.image[0])
+          ).unwrap();
+          file = uploadResult;
+        }
+        dispatch(
+          updatePost({
+            postData: post,
+            postSubmitData: data,
+            fileUploadData: file,
+          })
+        );
+      } else {
+        let file = null;
+        if (data.image[0]) {
+          // Dispatch the uploadFeaturedImage thunk and unwrap the result
+          const uploadResult = await dispatch(
+            uploadFeaturedImage(data.image[0])
+          ).unwrap();
+          file = uploadResult;
+        }
+
+        if (file) {
+          const postSubmitData = { ...data, featuredImage: file.$id };
+          dispatch(createPost({ postSubmitData, userData: userData }));
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  // old submit function
+  /*const submit = async (data) => {
     if (post) {
       const file = data.image[0]
         ? await appwriteService.uploadFile(data.image[0])
@@ -32,7 +97,6 @@ function PostForm({ post }) {
         ...data,
         featuredImage: file ? file.$id : undefined,
       });
-
       if (dbPost) {
         navigate(`/post/${dbPost.$id}`);
       }
@@ -51,19 +115,18 @@ function PostForm({ post }) {
         }
       }
     }
-  };
+  };*/
 
   const slugTransform = useCallback((value) => {
-        if (value && typeof value === "string")
-            return value
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-zA-Z\d\s]+/g, "-")
-                .replace(/\s/g, "-");
+    if (value && typeof value === "string")
+      return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-zA-Z\d\s]+/g, "-")
+        .replace(/\s/g, "-");
 
-        return "";
-    }, []);
-
+    return "";
+  }, []);
 
   useEffect(() => {
     const subscription = watch((value, { name }) => {
@@ -127,10 +190,11 @@ function PostForm({ post }) {
         />
         <Button
           type="submit"
-          childern={post ? "Update" : "Submit"}
           bgColor={post ? "bg-green-500" : undefined}
           className="w-full"
-        ></Button>
+        >
+          {post ? "Update" : "Submit"}
+        </Button>
       </div>
     </form>
   );
